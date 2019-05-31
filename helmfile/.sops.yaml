@@ -1,0 +1,4 @@
+---
+creation_rules:
+        # Encrypt using GCP KMS
+        - gcp_kms: projects/gabriel-garrido/locations/global/keyRings/sops/cryptoKeys/sopskey

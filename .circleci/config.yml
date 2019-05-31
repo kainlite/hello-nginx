@@ -1,0 +1,63 @@
+version: 2
+jobs:
+ build:
+   machine: true
+   steps:
+     - checkout
+     - run: |
+         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+
+     # build the application image
+     - run: docker build -t kainlite/hello:$CIRCLE_SHA1 .
+
+     # tag the image
+     - run: docker tag kainlite/hello:$CIRCLE_SHA1 kainlite/hello:latest
+
+     # push the image
+     - run: docker push kainlite/hello:$CIRCLE_SHA1
+     - run: docker push kainlite/hello:latest
+
+     # install gcloud
+     - run: |
+         export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
+         echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+         curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+         sudo apt-get update -y && sudo apt-get install google-cloud-sdk -y
+
+     # deploy the image
+     - run: |
+         echo "Downloading kubectl"
+         curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+         echo "Downloading helmfile"
+         curl -LO https://github.com/roboll/helmfile/releases/download/v0.68.1/helmfile_linux_amd64
+         echo "Downloading helm"
+         curl -LO https://storage.googleapis.com/kubernetes-helm/helm-v2.14.0-linux-amd64.tar.gz
+         echo "Downloading sops"
+         curl -LO https://github.com/mozilla/sops/releases/download/3.3.0/sops-3.3.0.linux
+         echo "Installing sops"
+         sudo mv sops-3.3.0.linux /usr/local/bin/sops
+         echo "Installing helmfile"
+         sudo mv helmfile_linux_amd64 /usr/local/bin/helmfile
+         echo "Installing helm"
+         tar xvf helm-v2.14.0-linux-amd64.tar.gz && sudo mv linux-amd64/helm /usr/local/bin/
+         echo "Installing kubectl"
+         export HELM_HOME="/home/circleci/project/helm"
+         mkdir -p ${HELM_HOME}/plugins
+         sudo mv kubectl /usr/local/bin/kubectl
+         echo "Fixing permissions"
+         sudo chmod +x /usr/local/bin/kubectl /usr/local/bin/helm /usr/local/bin/helmfile /usr/local/bin/sops
+         echo "Installing helm plugins"
+         helm plugin install https://github.com/databus23/helm-diff --version master
+         helm plugin install https://github.com/futuresimple/helm-secrets
+         echo "Deploying to ${DEPLOYMENT_ENVIRONMENT}"
+         echo "Activating gcloud"
+         # gcloud components update
+         echo ${ACCOUNT_KEY} > service_key.txt
+         base64 -i service_key.txt -d > ${HOME}/gcloud-service-key.json
+         gcloud auth activate-service-account ${ACCOUNT_ID} --key-file ${HOME}/gcloud-service-key.json
+         gcloud config set project ${PROJECT_ID}
+         gcloud --quiet container clusters get-credentials ${CLUSTER_NAME} --project ${PROJECT_ID} --zone ${ZONE_ID}
+         echo ${ACCOUNT_DEFAULT_KEY} | base64 -d > /home/circleci/.config/gcloud/application_default_credentials.json
+         echo "Deploying using helmfile"
+         cd helmfile && helmfile -e development apply
+         echo " Successfully deployed to ${DEPLOYMENT_ENVIRONMENT}"

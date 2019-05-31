@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hello.fullname" . }}
+  labels:
+{{ include "hello.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "hello.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "hello.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: ENVIRONMENT
+            value: "{{ .Values.environment.ENVIRONMENT }}"
+          - name: MYSECRET
+            value: "{{ .Values.environment.MYSECRET }}"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - mountPath: /etc/nginx/nginx.conf
+            subPath: nginx.conf
+            name: nginx-config
+          - mountPath: /etc/nginx/conf.d/hello.conf
+            name: hello-config
+            subPath: hello.conf
+          - mountPath: /usr/share/nginx/html/index.html
+            name: html-files
+            subPath: index.html
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginxconf-{{ .Values.environment.ENVIRONMENT }}
+          items:
+          - key: nginxconf
+            path: nginx.conf
+      - name: hello-config
+        configMap:
+          name: nginxconf-{{ .Values.environment.ENVIRONMENT }}
+          items:
+          - key: helloconf
+            path: hello.conf
+      - name: html-files
+        configMap:
+          name: nginxconf-{{ .Values.environment.ENVIRONMENT }}
+          items:
+          - key: indexhtml
+            path: index.html
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

@@ -2,13 +2,10 @@ FROM nginxdemos/hello
 
 RUN apk update && \
     apk add nginx-mod-http-lua && \
-    rm /etc/nginx/conf.d/default.conf
+    rm /etc/nginx/conf.d/default.conf && \
+    sed --in-place '/request_id/d' /etc/nginx/conf.d/hello.conf
 
-COPY nginx/nginx.conf /etc/nginx/
-COPY nginx/hello.conf /etc/nginx/conf.d/
-COPY html/index.html /usr/share/nginx/html/
+ENV ENVIRONMENT "default"
+ENV MYSECRET "default"
 
-ENV ENVIRONMENT "development"
-ENV MYSECRET "mysecret"
-
-RUN ["nginx"]
+CMD ["nginx", "-g", "'daemon off;'"]

@@ -1,0 +1,18 @@
+helmDefaults:
+  wait: false
+  recreatePods: false
+
+environments:
+  default:
+  development:
+    secrets:
+    - environments/development/secrets.yaml
+  stage:
+    secrets:
+    - environments/stage/secrets.yaml
+
+releases:
+  - name: hello-nginx-{{ .Environment.Name }}
+    chart: ../charts/nginx
+    values:
+    - values.yaml.gotmpl
