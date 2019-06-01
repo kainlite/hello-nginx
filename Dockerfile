@@ -8,4 +8,4 @@ RUN apk update && \
 ENV ENVIRONMENT "default"
 ENV MYSECRET "default"
 
-CMD ["nginx", "-g", "'daemon off;'"]
+CMD ["nginx", "-g", "daemon off;"]
