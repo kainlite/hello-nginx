@@ -17,7 +17,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 environment:
-  ENVIRONMENT: {{ .Environment.Name }}
+  ENVIRONMENT: {{ .Environment.Name | quote }}
   MYSECRET: {{ .Environment.Values.mysecret | quote }}
 
 service:
@@ -27,7 +27,7 @@ service:
 ingress:
   enabled: false
 
-# resources:
+resources: {}
 #   limits:
 #     cpu: 100m
 #     memory: 256Mi

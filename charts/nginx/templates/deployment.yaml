@@ -29,6 +29,11 @@ spec:
             value: "{{ .Values.environment.ENVIRONMENT }}"
           - name: MYSECRET
             value: "{{ .Values.environment.MYSECRET }}"
+          - name: MYSECRETFROMASECRET
+            valueFrom:
+              secretKeyRef:
+                name: mysecrets-{{ .Values.environment.ENVIRONMENT }}
+                key: mysecret
           ports:
             - name: http
               containerPort: 80
